@@ -1,16 +1,18 @@
 from pet_system import PetSystem
+from f import f
 
 def main():
     app = PetSystem()
-    
+    comp = f()
     while True:
         print("\n=== Community Pet Adoption & Registry System ===")
         print("[1] Register Pet")
         print("[2] Search Pet")
         print("[3] Apply for Adoption")
         print("[4] Exit")
+        print("[5] Compatibility test")
         
-        choice = input("Enter your choice (1-4): ").strip()
+        choice = input("Enter your choice (1-5): ").strip()
         
         if choice == '1':
             app.register_pet()
@@ -21,6 +23,8 @@ def main():
         elif choice == '4':
             print("Exiting system. Goodbye!")
             app.db.close()
+        elif choice == '5':
+            comp.f()
             break
         else:
             print("Invalid choice! Please select between 1 and 4.")
