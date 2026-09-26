@@ -41,7 +41,7 @@ class PetSystem:
         query = f"%{keyword}%"
         
         self.db.cursor.execute(
-            "SELECT id, name, species, breed, age, status FROM pets WHERE name LIKE ? OR species LIKE ? OR breed LIKE ?",
+            "SELECT pet_id, name, species, breed, age, status FROM pets WHERE name LIKE ? OR species LIKE ? OR breed LIKE ?",
             (query, query, query)
         )
         results = self.db.cursor.fetchall()
@@ -64,7 +64,7 @@ class PetSystem:
             print("Invalid ID format.")
             return
 
-        self.db.cursor.execute("SELECT status FROM pets WHERE id = ?", (pet_id,))
+        self.db.cursor.execute("SELECT status FROM pets WHERE pet_id = ?", (pet_id,))
         pet = self.db.cursor.fetchone()
 
         if not pet:
@@ -85,6 +85,6 @@ class PetSystem:
             "INSERT INTO adoptions (pet_id, adopter_name, contact_number) VALUES (?, ?, ?)",
             (pet_id, adopter_name, contact_number)
         )
-        self.db.cursor.execute("UPDATE pets SET status = 'Adopted' WHERE id = ?", (pet_id,))
+        self.db.cursor.execute("UPDATE pets SET status = 'Adopted' WHERE pet_id = ?", (pet_id,))
         self.db.conn.commit()
         print(f"Success! Adoption application submitted for Pet ID {pet_id} by {adopter_name}.")
