@@ -222,13 +222,28 @@ class PetFormWindow(ctk.CTkToplevel):
         self.photo_path = pet["photo"] if pet else None
 
         self.title("Edit Pet" if pet else "Add New Pet")
-        self.geometry("620x700")
-        self.resizable(False, False)
+        self.geometry("660x760")
+        self.minsize(600, 620)
+        self.resizable(True, True)
         self.configure(fg_color=COLORS["background"])
         self.grab_set()
 
-        card = make_card(self)
-        card.pack(fill="both", expand=True, padx=22, pady=22)
+        # Keep the action buttons permanently visible at the bottom.
+        # The form itself can scroll on smaller screens.
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        scroll = ctk.CTkScrollableFrame(
+            self,
+            fg_color=COLORS["background"],
+            corner_radius=0,
+            scrollbar_button_color=COLORS["primary_soft"],
+            scrollbar_button_hover_color=COLORS["primary"],
+        )
+        scroll.grid(row=0, column=0, sticky="nsew", padx=8, pady=(8, 0))
+
+        card = make_card(scroll)
+        card.pack(fill="x", expand=True, padx=14, pady=14)
 
         ctk.CTkLabel(
             card,
@@ -239,14 +254,22 @@ class PetFormWindow(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             card,
-            text="Fill in the pet details below.",
+            text="Fill in the pet details below. Fields marked with * are required.",
             text_color=COLORS["muted"],
         ).pack(anchor="w", padx=24, pady=(0, 18))
 
-        self.name = self._entry(card, "Pet Name", pet["name"] if pet else "")
-        self.species = self._entry(card, "Species", pet["species"] if pet else "")
-        self.breed = self._entry(card, "Breed", pet["breed"] if pet else "")
-        self.age = self._entry(card, "Age in Years", str(pet["age"]) if pet else "")
+        self.name = self._entry(
+            card, "Pet Name *", pet["name"] if pet else ""
+        )
+        self.species = self._entry(
+            card, "Species *", pet["species"] if pet else ""
+        )
+        self.breed = self._entry(
+            card, "Breed *", pet["breed"] if pet else ""
+        )
+        self.age = self._entry(
+            card, "Age in Years *", str(pet["age"]) if pet else ""
+        )
 
         self.sex = ctk.CTkOptionMenu(
             card,
@@ -255,10 +278,11 @@ class PetFormWindow(ctk.CTkToplevel):
             corner_radius=12,
             fg_color=COLORS["secondary_soft"],
             button_color=COLORS["secondary"],
+            button_hover_color="#A994D9",
             text_color=COLORS["text"],
         )
         self.sex.set(pet["sex"] if pet else "Female")
-        self._labeled_widget(card, "Sex", self.sex)
+        self._labeled_widget(card, "Sex *", self.sex)
 
         if pet:
             self.status = ctk.CTkOptionMenu(
@@ -268,10 +292,11 @@ class PetFormWindow(ctk.CTkToplevel):
                 corner_radius=12,
                 fg_color=COLORS["secondary_soft"],
                 button_color=COLORS["secondary"],
+                button_hover_color="#A994D9",
                 text_color=COLORS["text"],
             )
             self.status.set(pet["status"])
-            self._labeled_widget(card, "Status", self.status)
+            self._labeled_widget(card, "Status *", self.status)
 
         ctk.CTkLabel(
             card,
@@ -292,30 +317,65 @@ class PetFormWindow(ctk.CTkToplevel):
             self.description.insert("1.0", pet["description"])
 
         photo_row = ctk.CTkFrame(card, fg_color="transparent")
-        photo_row.pack(fill="x", padx=24, pady=14)
+        photo_row.pack(fill="x", padx=24, pady=(14, 24))
 
         cute_button(
             photo_row,
             "📷 Choose Photo",
             command=self.choose_photo,
             secondary=True,
-            width=135,
+            width=140,
         ).pack(side="left")
 
         self.photo_label = ctk.CTkLabel(
             photo_row,
-            text="No photo selected" if not self.photo_path else Path(self.photo_path).name,
+            text=(
+                "No photo selected"
+                if not self.photo_path
+                else Path(self.photo_path).name
+            ),
             text_color=COLORS["muted"],
             font=ctk.CTkFont(size=11),
         )
         self.photo_label.pack(side="left", padx=10)
 
+        # Fixed footer so Confirm is never hidden below the form.
+        footer = ctk.CTkFrame(
+            self,
+            height=76,
+            fg_color=COLORS["card"],
+            corner_radius=0,
+            border_width=1,
+            border_color=COLORS["line"],
+        )
+        footer.grid(row=1, column=0, sticky="ew")
+        footer.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            footer,
+            text="♡ Make sure the details are correct before saving.",
+            font=ctk.CTkFont(size=11),
+            text_color=COLORS["muted"],
+        ).grid(row=0, column=0, padx=24, pady=18, sticky="w")
+
         cute_button(
-            card,
-            "Save Pet ♡",
+            footer,
+            "Cancel",
+            command=self.destroy,
+            secondary=True,
+            width=100,
+        ).grid(row=0, column=1, padx=(8, 6), pady=18)
+
+        cute_button(
+            footer,
+            "Confirm & Add Pet ♡" if not pet else "Confirm Changes ♡",
             command=self.save,
-            width=150,
-        ).pack(pady=(8, 22))
+            width=175,
+        ).grid(row=0, column=2, padx=(6, 24), pady=18)
+
+        # Enter can also confirm the form.
+        self.bind("<Return>", lambda event: self.save())
+        self.after(100, self.name.focus_set)
 
     def _entry(self, parent, label, value):
         ctk.CTkLabel(
@@ -365,17 +425,29 @@ class PetFormWindow(ctk.CTkToplevel):
         description = self.description.get("1.0", "end").strip()
 
         if not name or not species or not breed or not age_text:
-            messagebox.showerror("Missing Details", "Please fill in all required fields.")
+            messagebox.showerror(
+                "Missing Details",
+                "Please fill in Pet Name, Species, Breed, and Age.",
+                parent=self,
+            )
             return
 
         try:
             age = float(age_text)
         except ValueError:
-            messagebox.showerror("Invalid Age", "Age must be a number.")
+            messagebox.showerror(
+                "Invalid Age",
+                "Age must be a number.",
+                parent=self,
+            )
             return
 
         if age < 0 or age > 50:
-            messagebox.showerror("Invalid Age", "Age must be between 0 and 50.")
+            messagebox.showerror(
+                "Invalid Age",
+                "Age must be between 0 and 50.",
+                parent=self,
+            )
             return
 
         photo = self.pet["photo"] if self.pet else None
@@ -384,20 +456,47 @@ class PetFormWindow(ctk.CTkToplevel):
             try:
                 photo = copy_photo(self.photo_path)
             except ValueError as exc:
-                messagebox.showerror("Photo Error", str(exc))
+                messagebox.showerror(
+                    "Photo Error",
+                    str(exc),
+                    parent=self,
+                )
                 return
 
         if self.pet:
             update_pet(
-                self.pet["id"], name, species, breed, age, sex,
-                description, self.status.get(), photo
+                self.pet["id"],
+                name,
+                species,
+                breed,
+                age,
+                sex,
+                description,
+                self.status.get(),
+                photo,
             )
+            success_text = f"{name}'s profile was updated successfully!"
         else:
-            add_pet(name, species, breed, age, sex, description, photo)
+            add_pet(
+                name,
+                species,
+                breed,
+                age,
+                sex,
+                description,
+                photo,
+            )
+            success_text = f"{name} was added successfully!"
 
-        messagebox.showinfo("Saved ♡", f"{name}'s profile was saved successfully!")
+        messagebox.showinfo(
+            "Saved ♡",
+            success_text,
+            parent=self,
+        )
+
         if self.on_saved:
             self.on_saved()
+
         self.destroy()
 
 
